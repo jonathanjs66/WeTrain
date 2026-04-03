@@ -13,6 +13,8 @@ def create_app():
     from app.routes.trainers import bp as trainers_bp
     app.register_blueprint(health_bp)
     app.register_blueprint(trainers_bp)
+    from app.routes.sessions import bp as sessions_bp
+    app.register_blueprint(sessions_bp)
     from app import models
     with app.app_context(): 
         db.create_all()
