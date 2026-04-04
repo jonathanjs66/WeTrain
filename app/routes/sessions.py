@@ -40,6 +40,17 @@ def create_session():
     trainer = db.session.get(Trainer, trainer_id)
     if trainer is None:
         return jsonify({"error": "trainer not found"}), 404
+    #check for overlapping sessonions
+    overlapping = db.sessions.scalars(
+        db.select(Sessions).where(
+            Sessions.trainer_id == trainer_id,
+            db.or_(
+                db.and_(Sessions.starts_at <ends_at, Sessions.ends_at > starts_at),
+            )
+        )
+    ).first()
+    if overlapping:
+        return jsonify({"error": "session overlaps with existing session"}), 409
     try:
         starts_at = datetime.fromisoformat(starts_raw)
         ends_at = datetime.fromisoformat(ends_raw)
