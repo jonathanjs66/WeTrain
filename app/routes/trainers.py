@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-
+from app.auth import require_admin
 from app.extensions import db
 from app.models import Trainer
 
@@ -7,24 +7,33 @@ bp = Blueprint("trainers", __name__, url_prefix="/api/trainers")
 
 @bp.get("/")
 def list_trainers():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
     trainers = db.session.scalars(
         db.select(Trainer).order_by(Trainer.id)
     ).all()
     return jsonify(
-        [{"id":t.id, "name": t.name} for t in trainers]
-        )
+        [{"id": t.id, "name": t.name} for t in trainers]
+    )
 
 @bp.post("/")
 def create_trainer():
+    auth_error = require_admin()
+    if auth_error:
+        return auth_error
+
     data = request.get_json(silent=True) or {}
     raw_name = data.get("name", "")
     if not isinstance(raw_name, str):
         return jsonify({"error": "name must be a string"}), 400
+
     name = raw_name.strip()
     if not name:
         return jsonify({"error": "name is required"}), 400
     if len(name) > 120:
-        return jsonify({ "error":"name must be below 120 characters"}), 400
+        return jsonify({"error": "name must be 120 characters or less"}), 400
 
     trainer = Trainer(name=name)
     db.session.add(trainer)

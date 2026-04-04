@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from app.auth import get_current_role, get_current_trainer_id, require_trainer_or_admin
 from flask import Blueprint, jsonify, request
 
 from app.extensions import db
@@ -10,7 +10,21 @@ bp = Blueprint("sessions", __name__, url_prefix="/api/sessions")
 
 @bp.get("/")
 def list_sessions():
-    q = db.select(Session).order_by(Session.starts_at)
+    role = get_current_role()
+
+    if role == "admin":
+        q = db.select(Session).order_by(Session.starts_at)
+    elif role == "trainer":
+        current_trainer_id = get_current_trainer_id()
+        if current_trainer_id is None:
+            return jsonify({"error": "trainer id required"}), 403
+
+        q = db.select(Session).where(
+            Session.trainer_id == current_trainer_id
+        ).order_by(Session.starts_at)
+    else:
+        return jsonify({"error": "authentication required"}), 403
+
     sessions = db.session.scalars(q).all()
     return jsonify(
         [
@@ -26,6 +40,7 @@ def list_sessions():
     )
 
 
+
 @bp.post("/")
 def create_session():
     data = request.get_json(silent=True) or {}
@@ -38,6 +53,15 @@ def create_session():
         return jsonify(
             {"error": "trainer_id, client_name, starts_at, ends_at are required"}
         ), 400
+
+    try:
+        trainer_id = int(trainer_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "trainer_id must be an integer"}), 400
+
+    auth_error = require_trainer_or_admin(trainer_id)
+    if auth_error:
+        return auth_error
 
     trainer = db.session.get(Trainer, trainer_id)
     if trainer is None:
