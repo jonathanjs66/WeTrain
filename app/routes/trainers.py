@@ -17,9 +17,14 @@ def list_trainers():
 @bp.post("/")
 def create_trainer():
     data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
+    raw_name = data.get("name", "")
+    if not isinstance(raw_name, str):
+        return jsonify({"error": "name must be a string"}), 400
+    name = raw_name.strip()
     if not name:
         return jsonify({"error": "name is required"}), 400
+    if len(name) > 120:
+        return jsonify({ "error":"name must be below 120 characters"}), 400
 
     trainer = Trainer(name=name)
     db.session.add(trainer)
