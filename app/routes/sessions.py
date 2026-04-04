@@ -1,4 +1,4 @@
-from datetime import datetime  
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
@@ -6,7 +6,6 @@ from app.extensions import db
 from app.models import Session, Trainer
 
 bp = Blueprint("sessions", __name__, url_prefix="/api/sessions")
-
 
 
 @bp.get("/")
@@ -26,6 +25,7 @@ def list_sessions():
         ]
     )
 
+
 @bp.post("/")
 def create_session():
     data = request.get_json(silent=True) or {}
@@ -33,31 +33,35 @@ def create_session():
     client_name = (data.get("client_name") or "").strip()
     starts_raw = data.get("starts_at")
     ends_raw = data.get("ends_at")
+
     if trainer_id is None or not client_name or not starts_raw or not ends_raw:
         return jsonify(
             {"error": "trainer_id, client_name, starts_at, ends_at are required"}
         ), 400
+
     trainer = db.session.get(Trainer, trainer_id)
     if trainer is None:
         return jsonify({"error": "trainer not found"}), 404
-    #check for overlapping sessonions
-    overlapping = db.sessions.scalars(
-        db.select(Sessions).where(
-            Sessions.trainer_id == trainer_id,
-            db.or_(
-                db.and_(Sessions.starts_at <ends_at, Sessions.ends_at > starts_at),
-            )
-        )
-    ).first()
-    if overlapping:
-        return jsonify({"error": "session overlaps with existing session"}), 409
+
     try:
         starts_at = datetime.fromisoformat(starts_raw)
         ends_at = datetime.fromisoformat(ends_raw)
     except (TypeError, ValueError):
         return jsonify({"error": "starts_at and ends_at must be ISO datetimes"}), 400
+
     if ends_at <= starts_at:
         return jsonify({"error": "ends_at must be after starts_at"}), 400
+
+    overlapping = db.session.scalars(
+        db.select(Session).where(
+            Session.trainer_id == trainer_id,
+            Session.starts_at < ends_at,
+            Session.ends_at > starts_at,
+        )
+    ).first()
+    if overlapping:
+        return jsonify({"error": "session overlaps with existing session"}), 409
+
     session = Session(
         trainer_id=trainer_id,
         client_name=client_name,

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeTrain - Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <h1>WeTrain</h1>
+                <p class="health" id="health">Checking connection...</p>
+            </div>
+            
+            <div class="role-toggle">
+                <label>
+                    <input type="radio" name="role" value="admin" checked /> Admin
+                </label>
+                <label>
+                    <input type="radio" name="role" value="trainer" />
+                    Trainer (ID: <select id="trainerSelect" style="width:60px;"><option>1</option></select>)
+                </label>
+            </div>
+        </header>
+
+        <main id="adminView" class="role-view visible">
+            <!-- Trainers Section -->
+            <section class="panel">
+                <h2>Trainers</h2>
+                
+                <div class="form-group">
+                    <input type="text" id="trainerName" placeholder="Enter trainer name" />
+                    <button onclick="addTrainer()">Add Trainer</button>
+                </div>
+
+                <div id="trainersList" class="list">
+                    <p>Loading trainers...</p>
+                </div>
+            </section>
+
+            <!-- Sessions Section -->
+            <section class="panel">
+                <h2>Sessions</h2>
+                
+                <div class="form-group">
+                    <select id="sessionTrainer">
+                        <option value="">Select Trainer</option>
+                    </select>
+                    <input type="text" id="sessionClient" placeholder="Client name" />
+                    <input type="datetime-local" id="sessionStart" />
+                    <input type="datetime-local" id="sessionEnd" />
+                    <button onclick="addSession()">Create Session</button>
+                </div>
+
+                <div id="message" class="message"></div>
+
+                <div id="sessionsList" class="list">
+                    <p>Loading sessions...</p>
+                </div>
+            </section>
+        </main>
+
+        <main id="trainerView" class="role-view">
+            <!-- Trainer View: My Sessions -->
+            <section class="panel full-width">
+                <h2>My Sessions</h2>
+                <div id="trainerSessions" class="list">
+                    <p>Loading sessions...</p>
+                </div>
+            </section>
+
+            <!-- Book Session -->
+            <section class="panel full-width">
+                <h2>Book a Session</h2>
+                
+                <div class="form-group">
+                    <input type="text" id="bookClientName" placeholder="Client name" />
+                    <input type="datetime-local" id="bookStart" />
+                    <input type="datetime-local" id="bookEnd" />
+                    <button onclick="bookSession()">Book Session</button>
+                </div>
+
+                <div id="bookMessage" class="message"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
