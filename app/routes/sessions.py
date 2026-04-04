@@ -106,3 +106,18 @@ def create_session():
         ),
         201,
     )
+
+
+@bp.delete("/<int:session_id>")
+def delete_session(session_id):
+    session = db.session.get(Session, session_id)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+
+    auth_error = require_trainer_or_admin(session.trainer_id)
+    if auth_error:
+        return auth_error
+
+    db.session.delete(session)
+    db.session.commit()
+    return jsonify({"status": "deleted"}), 200

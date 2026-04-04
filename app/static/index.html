@@ -26,38 +26,70 @@
         </header>
 
         <main id="adminView" class="role-view visible">
-            <!-- Trainers Section -->
-            <section class="panel">
-                <h2>Trainers</h2>
-                
-                <div class="form-group">
-                    <input type="text" id="trainerName" placeholder="Enter trainer name" />
-                    <button onclick="addTrainer()">Add Trainer</button>
-                </div>
-
-                <div id="trainersList" class="list">
-                    <p>Loading trainers...</p>
-                </div>
-            </section>
-
-            <!-- Sessions Section -->
-            <section class="panel">
-                <h2>Sessions</h2>
-                
-                <div class="form-group">
-                    <select id="sessionTrainer">
-                        <option value="">Select Trainer</option>
-                    </select>
-                    <input type="text" id="sessionClient" placeholder="Client name" />
-                    <input type="datetime-local" id="sessionStart" />
-                    <input type="datetime-local" id="sessionEnd" />
-                    <button onclick="addSession()">Create Session</button>
-                </div>
+            <section class="panel full-width">
+                <h2>Admin Schedule</h2>
 
                 <div id="message" class="message"></div>
 
-                <div id="sessionsList" class="list">
-                    <p>Loading sessions...</p>
+                <div class="admin-layout">
+                    <aside class="admin-sidebar">
+                        <div class="compact-form">
+                            <h3>Add Trainer</h3>
+                            <input type="text" id="trainerName" placeholder="Trainer name" />
+                            <button onclick="addTrainer()">Add Trainer</button>
+                        </div>
+
+                        <div class="trainer-list-shell">
+                            <div class="trainer-list-header">
+                                <h3>Trainers</h3>
+                                <span>A-Z</span>
+                            </div>
+                            <div id="trainersList" class="trainer-scroll-list">
+                                <p>Loading trainers...</p>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <section class="admin-calendar-column">
+                        <div class="compact-form">
+                            <h3>Create Session</h3>
+                            <select id="sessionTrainer">
+                                <option value="">Select Trainer</option>
+                            </select>
+                            <input type="text" id="sessionClient" placeholder="Client name" />
+                            <input type="datetime-local" id="sessionStart" />
+                            <input type="datetime-local" id="sessionEnd" />
+                            <button onclick="addSession()">Create Session</button>
+                        </div>
+
+                        <div class="calendar-shell">
+                            <div class="calendar-toolbar">
+                                <button type="button" onclick="changeAdminMonth(-1)">Previous</button>
+                                <h3 id="adminCalendarTitle">Loading month...</h3>
+                                <button type="button" onclick="changeAdminMonth(1)">Next</button>
+                            </div>
+                            <div class="calendar-weekdays">
+                                <span>Sun</span>
+                                <span>Mon</span>
+                                <span>Tue</span>
+                                <span>Wed</span>
+                                <span>Thu</span>
+                                <span>Fri</span>
+                                <span>Sat</span>
+                            </div>
+                            <div id="sessionsCalendar" class="calendar-grid">
+                                <p>Loading calendar...</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <aside class="day-panel admin-day-panel">
+                        <h3>Selected Day</h3>
+                        <p id="adminDaySummary" class="day-summary">Choose a day to inspect hourly capacity.</p>
+                        <div id="sessionsList" class="hourly-scroll">
+                            <p>No day selected</p>
+                        </div>
+                    </aside>
                 </div>
             </section>
         </main>
@@ -65,26 +97,63 @@
         <main id="trainerView" class="role-view">
             <!-- Trainer View: My Sessions -->
             <section class="panel full-width">
-                <h2>My Sessions</h2>
-                <div id="trainerSessions" class="list">
-                    <p>Loading sessions...</p>
+                <h2>My Schedule</h2>
+                <div class="calendar-layout">
+                    <div>
+                        <div class="calendar-shell">
+                            <div class="calendar-toolbar">
+                                <button type="button" onclick="changeTrainerMonth(-1)">Previous</button>
+                                <h3 id="trainerCalendarTitle">Loading month...</h3>
+                                <button type="button" onclick="changeTrainerMonth(1)">Next</button>
+                            </div>
+                            <div class="calendar-weekdays">
+                                <span>Sun</span>
+                                <span>Mon</span>
+                                <span>Tue</span>
+                                <span>Wed</span>
+                                <span>Thu</span>
+                                <span>Fri</span>
+                                <span>Sat</span>
+                            </div>
+                            <div id="trainerCalendar" class="calendar-grid">
+                                <p>Loading calendar...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="day-panel">
+                        <h3>My Month</h3>
+                        <div class="trainer-right-column">
+                            <div class="trainer-pane trainer-pane--history">
+                                <p id="trainerMonthSummary" class="day-summary">Your sessions for this month.</p>
+                                <div id="trainerMonthList" class="trainer-month-scroll">
+                                    <p>No sessions this month</p>
+                                </div>
+                            </div>
+                            <div class="trainer-pane trainer-pane--booking">
+                                <p id="trainerDaySummary" class="day-summary">Choose a day to inspect your bookings.</p>
+                                <div id="trainerSessions" class="hourly-scroll">
+                                    <p>No day selected</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Book Session -->
-            <section class="panel full-width">
-                <h2>Book a Session</h2>
-                
-                <div class="form-group">
-                    <input type="text" id="bookClientName" placeholder="Client name" />
-                    <input type="datetime-local" id="bookStart" />
-                    <input type="datetime-local" id="bookEnd" />
-                    <button onclick="bookSession()">Book Session</button>
-                </div>
-
-                <div id="bookMessage" class="message"></div>
             </section>
         </main>
+    </div>
+
+    <div id="slotModal" class="modal hidden">
+        <div class="modal-backdrop" onclick="closeSlotModal()"></div>
+        <div class="modal-card">
+            <h3 id="slotModalTitle">Book Slot</h3>
+            <p id="slotModalSummary" class="day-summary">Select a slot to continue.</p>
+            <input type="text" id="slotClientName" placeholder="Client name" />
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" onclick="closeSlotModal()">Cancel</button>
+                <button type="button" id="slotModalConfirmButton" onclick="confirmSlotAction()">Make Appointment</button>
+            </div>
+            <div id="slotModalMessage" class="message"></div>
+        </div>
     </div>
 
     <script src="/static/script.js"></script>

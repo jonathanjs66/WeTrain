@@ -176,6 +176,68 @@ def test_reject_overlapping_session(client):
     }
 
 
+def test_trainer_can_cancel_own_session(client):
+    trainer = client.post(
+        "/api/trainers/",
+        json={"name": "John Doe"},
+        headers=ADMIN_HEADERS,
+    ).get_json()
+
+    session = client.post(
+        "/api/sessions/",
+        json={
+            "trainer_id": trainer["id"],
+            "client_name": "Alice",
+            "starts_at": "2026-04-05T10:00:00",
+            "ends_at": "2026-04-05T11:00:00",
+        },
+        headers=ADMIN_HEADERS,
+    ).get_json()
+
+    response = client.delete(
+        f"/api/sessions/{session['id']}",
+        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer["id"])},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "deleted"}
+
+
+def test_trainer_cannot_cancel_other_trainer_session(client):
+    trainer_1 = client.post(
+        "/api/trainers/",
+        json={"name": "John Doe"},
+        headers=ADMIN_HEADERS,
+    ).get_json()
+
+    trainer_2 = client.post(
+        "/api/trainers/",
+        json={"name": "Jane Doe"},
+        headers=ADMIN_HEADERS,
+    ).get_json()
+
+    session = client.post(
+        "/api/sessions/",
+        json={
+            "trainer_id": trainer_2["id"],
+            "client_name": "Bob",
+            "starts_at": "2026-04-05T12:00:00",
+            "ends_at": "2026-04-05T13:00:00",
+        },
+        headers=ADMIN_HEADERS,
+    ).get_json()
+
+    response = client.delete(
+        f"/api/sessions/{session['id']}",
+        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer_1["id"])},
+    )
+
+    assert response.status_code == 403
+    assert response.get_json() == {
+        "error": "you can only access your own sessions"
+    }
+
+
 def test_trainer_only_sees_own_sessions(client):
     trainer_1 = client.post(
         "/api/trainers/",
