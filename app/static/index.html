@@ -10,22 +10,37 @@
     <div class="container">
         <header>
             <div class="header-top">
-                <h1>WeTrain</h1>
-                <p class="health" id="health">Checking connection...</p>
-            </div>
-            
-            <div class="role-toggle">
-                <label>
-                    <input type="radio" name="role" value="admin" checked /> Admin
-                </label>
-                <label>
-                    <input type="radio" name="role" value="trainer" />
-                    Trainer (ID: <select id="trainerSelect" style="width:60px;"><option>1</option></select>)
-                </label>
+                <div>
+                    <h1>WeTrain</h1>
+                    <p class="health" id="health">Checking connection...</p>
+                </div>
+                <div class="auth-status">
+                    <div id="currentUserBadge" class="user-badge hidden">
+                        <strong id="currentUsername">Guest</strong>
+                        <span id="currentUserRole">Not signed in</span>
+                    </div>
+                    <button id="logoutButton" class="secondary-button hidden" type="button">Log Out</button>
+                </div>
             </div>
         </header>
 
-        <main id="adminView" class="role-view visible">
+        <section id="loginView" class="login-shell">
+            <div class="login-card">
+                <h2>Sign In</h2>
+                <p class="day-summary">Use the seeded development accounts to enter the app.</p>
+                <div id="loginMessage" class="message"></div>
+                <input type="text" id="loginUsername" placeholder="Username" />
+                <input type="password" id="loginPassword" placeholder="Password" />
+                <button id="loginButton" type="button">Log In</button>
+                <div class="login-hints">
+                    <p><strong>Admin:</strong> <code>admin</code> / <code>admin123</code></p>
+                    <p><strong>Trainer:</strong> <code>trainer1</code> / <code>trainer123</code></p>
+                </div>
+            </div>
+        </section>
+
+        <div id="appShell" class="app-shell hidden">
+        <main id="adminView" class="role-view">
             <section class="panel full-width">
                 <h2>Admin Schedule</h2>
 
@@ -95,9 +110,9 @@
         </main>
 
         <main id="trainerView" class="role-view">
-            <!-- Trainer View: My Sessions -->
             <section class="panel full-width">
                 <h2>My Schedule</h2>
+                <div id="trainerMessage" class="message"></div>
                 <div class="calendar-layout">
                     <div>
                         <div class="calendar-shell">
@@ -140,6 +155,7 @@
                 </div>
             </section>
         </main>
+        </div>
     </div>
 
     <div id="slotModal" class="modal hidden">

@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.pyo
 .Python
+.pytest_cache/
 .DS_Store
 .~lock.*
 *.docxS

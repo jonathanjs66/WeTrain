@@ -1,19 +1,12 @@
-from flask import jsonify, request
+from flask import jsonify, session
 
 
 def get_current_role():
-    return request.headers.get("X-Role")
+    return session.get("role")
 
 
 def get_current_trainer_id():
-    trainer_id = request.headers.get("X-Trainer-Id")
-    if trainer_id is None:
-        return None
-
-    try:
-        return int(trainer_id)
-    except ValueError:
-        return None
+    return session.get("trainer_id")
 
 
 def require_admin():

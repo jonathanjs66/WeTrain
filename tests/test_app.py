@@ -1,11 +1,10 @@
 import pytest
+
 from app import create_app
+from app.routes.auth import login
+from app.routes.sessions import Session
 from app.extensions import db
-
-
-ADMIN_HEADERS = {"X-Role": "admin"}
-TRAINER_1_HEADERS = {"X-Role": "trainer", "X-Trainer-Id": "1"}
-TRAINER_2_HEADERS = {"X-Role": "trainer", "X-Trainer-Id": "2"}
+from app.models import Trainer, User
 
 
 @pytest.fixture
@@ -23,11 +22,48 @@ def client():
         db.drop_all()
         db.create_all()
 
+        trainer = Trainer(name="John Doe")
+        db.session.add(trainer)
+        db.session.flush()
+
+        admin_user = User(username="admin", role="admin")
+        admin_user.set_password("admin123")
+        db.session.add(admin_user)
+
+        trainer_user = User(
+            username="trainer1",
+            role="trainer",
+            trainer_id=trainer.id,
+        )
+        trainer_user.set_password("trainer123")
+        db.session.add(trainer_user)
+
+        other_trainer = Trainer(name="Jane Doe")
+        db.session.add(other_trainer)
+        db.session.flush()
+
+        other_trainer_user = User(
+            username="trainer2",
+            role="trainer",
+            trainer_id=other_trainer.id,
+        )
+        other_trainer_user.set_password("trainer456")
+        db.session.add(other_trainer_user)
+
+        db.session.commit()
+
         client = app.test_client()
         yield client
 
         db.session.remove()
         db.drop_all()
+
+
+def login(client, username, password):
+    return client.post(
+        "/api/auth/login",
+        json={"username": username, "password": password},
+    )
 
 
 def test_health(client):
@@ -37,24 +73,41 @@ def test_health(client):
     assert response.get_json() == {"status": "ok"}
 
 
+def test_login_success(client):
+    response = login(client, "admin", "admin123")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["user"]["username"] == "admin"
+    assert data["user"]["role"] == "admin"
+
+
+def test_login_invalid_credentials(client):
+    response = login(client, "admin", "wrong-password")
+
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "invalid credentials"}
+
+
 def test_admin_can_create_trainer(client):
+    login(client, "admin", "admin123")
+
     response = client.post(
         "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
+        json={"name": "Another Trainer"},
     )
 
     assert response.status_code == 201
     data = response.get_json()
-    assert data["name"] == "John Doe"
-    assert "id" in data
+    assert data["name"] == "Another Trainer"
 
 
 def test_trainer_cannot_create_trainer(client):
+    login(client, "trainer1", "trainer123")
+
     response = client.post(
         "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=TRAINER_1_HEADERS,
+        json={"name": "Another Trainer"},
     )
 
     assert response.status_code == 403
@@ -62,12 +115,10 @@ def test_trainer_cannot_create_trainer(client):
 
 
 def test_admin_can_create_session(client):
-    trainer_response = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    )
-    trainer_id = trainer_response.get_json()["id"]
+    login(client, "admin", "admin123")
+
+    trainers_response = client.get("/api/trainers/")
+    trainer_id = trainers_response.get_json()[0]["id"]
 
     response = client.post(
         "/api/sessions/",
@@ -77,7 +128,6 @@ def test_admin_can_create_session(client):
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers=ADMIN_HEADERS,
     )
 
     assert response.status_code == 201
@@ -87,49 +137,32 @@ def test_admin_can_create_session(client):
 
 
 def test_trainer_can_create_own_session(client):
-    trainer_response = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    )
-    trainer_id = trainer_response.get_json()["id"]
+    login(client, "trainer1", "trainer123")
 
     response = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_id,
+            "trainer_id": 1,
             "client_name": "Alice",
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer_id)},
     )
 
     assert response.status_code == 201
 
 
 def test_trainer_cannot_create_other_trainer_session(client):
-    first_trainer = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    second_trainer = client.post(
-        "/api/trainers/",
-        json={"name": "Jane Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
+    login(client, "trainer1", "trainer123")
 
     response = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": second_trainer["id"],
+            "trainer_id": 2,
             "client_name": "Alice",
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers={"X-Role": "trainer", "X-Trainer-Id": str(first_trainer["id"])},
     )
 
     assert response.status_code == 403
@@ -139,98 +172,70 @@ def test_trainer_cannot_create_other_trainer_session(client):
 
 
 def test_reject_overlapping_session(client):
-    trainer_response = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    )
-    trainer_id = trainer_response.get_json()["id"]
+    login(client, "admin", "admin123")
 
-    first_response = client.post(
+    response_1 = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_id,
+            "trainer_id": 1,
             "client_name": "Alice",
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers=ADMIN_HEADERS,
     )
+    assert response_1.status_code == 201
 
-    assert first_response.status_code == 201
-
-    overlap_response = client.post(
+    response_2 = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_id,
+            "trainer_id": 1,
             "client_name": "Bob",
             "starts_at": "2026-04-05T10:30:00",
             "ends_at": "2026-04-05T11:30:00",
         },
-        headers=ADMIN_HEADERS,
     )
 
-    assert overlap_response.status_code == 409
-    assert overlap_response.get_json() == {
+    assert response_2.status_code == 409
+    assert response_2.get_json() == {
         "error": "session overlaps with existing session"
     }
 
 
 def test_trainer_can_cancel_own_session(client):
-    trainer = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
+    login(client, "trainer1", "trainer123")
 
-    session = client.post(
+    session_response = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer["id"],
+            "trainer_id": 1,
             "client_name": "Alice",
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    response = client.delete(
-        f"/api/sessions/{session['id']}",
-        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer["id"])},
     )
+    session_id = session_response.get_json()["id"]
+
+    response = client.delete(f"/api/sessions/{session_id}")
 
     assert response.status_code == 200
     assert response.get_json() == {"status": "deleted"}
 
 
 def test_trainer_cannot_cancel_other_trainer_session(client):
-    trainer_1 = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    trainer_2 = client.post(
-        "/api/trainers/",
-        json={"name": "Jane Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    session = client.post(
+    login(client, "admin", "admin123")
+    session_response = client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_2["id"],
+            "trainer_id": 2,
             "client_name": "Bob",
             "starts_at": "2026-04-05T12:00:00",
             "ends_at": "2026-04-05T13:00:00",
         },
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    response = client.delete(
-        f"/api/sessions/{session['id']}",
-        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer_1["id"])},
     )
+    session_id = session_response.get_json()["id"]
+
+    login(client, "trainer1", "trainer123")
+    response = client.delete(f"/api/sessions/{session_id}")
 
     assert response.status_code == 403
     assert response.get_json() == {
@@ -239,47 +244,31 @@ def test_trainer_cannot_cancel_other_trainer_session(client):
 
 
 def test_trainer_only_sees_own_sessions(client):
-    trainer_1 = client.post(
-        "/api/trainers/",
-        json={"name": "John Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
-    trainer_2 = client.post(
-        "/api/trainers/",
-        json={"name": "Jane Doe"},
-        headers=ADMIN_HEADERS,
-    ).get_json()
-
+    login(client, "admin", "admin123")
     client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_1["id"],
+            "trainer_id": 1,
             "client_name": "Alice",
             "starts_at": "2026-04-05T10:00:00",
             "ends_at": "2026-04-05T11:00:00",
         },
-        headers=ADMIN_HEADERS,
     )
-
     client.post(
         "/api/sessions/",
         json={
-            "trainer_id": trainer_2["id"],
+            "trainer_id": 2,
             "client_name": "Bob",
             "starts_at": "2026-04-05T12:00:00",
             "ends_at": "2026-04-05T13:00:00",
         },
-        headers=ADMIN_HEADERS,
     )
 
-    response = client.get(
-        "/api/sessions/",
-        headers={"X-Role": "trainer", "X-Trainer-Id": str(trainer_1["id"])},
-    )
+    login(client, "trainer1", "trainer123")
+    response = client.get("/api/sessions/")
 
     assert response.status_code == 200
     data = response.get_json()
     assert len(data) == 1
-    assert data[0]["trainer_id"] == trainer_1["id"]
+    assert data[0]["trainer_id"] == 1
     assert data[0]["client_name"] == "Alice"

@@ -1,18 +1,29 @@
-# Trainer Scheduling App
+# WeTrain
 
-A minimal Flask backend for trainer scheduling.
+A minimal trainer scheduling app built with Flask, PostgreSQL, Docker, and basic CI.
 
-## Setup and Run
+## Features
 
-1. Ensure Docker and Docker Compose are installed.
-2. Run: `docker compose up --build`
-3. The app will be available at http://localhost:5000
-4. Health check: GET /health
+- Flask app factory pattern
+- PostgreSQL with SQLAlchemy
+- `/health` endpoint
+- Trainer and session APIs
+- Session overlap prevention
+- Basic role-based access control using request headers
+- Frontend calendar for admin and trainer views
+- Automated tests with `pytest`
+- GitHub Actions CI
 
-## API Endpoints
+## Environment Variables
 
-- GET /health: Returns {"status": "ok"}
-- GET /api/trainers: List trainers
-- POST /api/trainers: Create trainer (JSON: {"name": "string"})
-- GET /api/sessions: List sessions
-- POST /api/sessions: Create session (JSON: {"trainer_id": int, "client_name": "string", "starts_at": "ISO datetime", "ends_at": "ISO datetime"})
+Create a `.env` file in the project root.
+
+Example:
+
+```env
+FLASK_ENV=development
+SECRET_KEY=replace-me-with-a-random-string
+DATABASE_URL=postgresql://user:password@db:5432/trainer_app
+DB_USER=user
+DB_PASSWORD=password
+DB_NAME=trainer_app
