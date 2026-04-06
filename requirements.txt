@@ -3,3 +3,5 @@ python-dotenv
 Flask-SQLAlchemy
 psycopg2-binary
 pytest
+Flask-Migrate
+gunicorn

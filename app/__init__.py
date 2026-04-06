@@ -1,9 +1,10 @@
 import logging
+import sys
 from pathlib import Path
 
 from flask import Flask, jsonify, request
 
-from app.extensions import db
+from app.extensions import db, migrate
 from app.config import config
 
 
@@ -17,6 +18,7 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     db.init_app(app)
+    migrate.init_app(app, db)
 
     @app.before_request
     def log_request():
@@ -39,11 +41,14 @@ def create_app(test_config=None):
 
     from app import models
 
+    is_migration_command = "db" in sys.argv
+
     with app.app_context():
-        db.create_all()
         from app.models import Trainer, User
 
-        if not app.config.get("TESTING"):
+        if not app.config.get("TESTING") and not is_migration_command:
+            db.create_all()
+
             admin_user = db.session.scalar(
                 db.select(User).where(User.username == "admin")
             )
