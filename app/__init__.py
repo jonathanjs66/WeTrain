@@ -1,8 +1,9 @@
 import logging
 import sys
+import time
 from pathlib import Path
 
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
 
 from app.extensions import db, migrate
 from app.config import config
@@ -22,21 +23,37 @@ def create_app(test_config=None):
 
     @app.before_request
     def log_request():
-        app.logger.info(f"{request.method} {request.path}")
+        g.request_start_time = time.perf_counter()
+        app.logger.info(
+            "request_started method=%s path=%s",
+            request.method,
+            request.path,
+        )
 
     @app.after_request
     def log_response(response):
-        app.logger.info(f"Response status: {response.status}")
+        duration_ms = (time.perf_counter() - g.request_start_time) * 1000
+        app.logger.info(
+            "request_finished method=%s path=%s status=%s duration_ms=%.2f",
+            request.method,
+            request.path,
+            response.status_code,
+            duration_ms,
+        )
         return response
+
 
     from app.routes.health import bp as health_bp
     from app.routes.trainers import bp as trainers_bp
     from app.routes.auth import bp as auth_bp
     from app.routes.sessions import bp as sessions_bp
+    from app.routes.ready import bp as ready_bp
+
 
     app.register_blueprint(health_bp)
     app.register_blueprint(trainers_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(ready_bp)
     app.register_blueprint(sessions_bp)
 
     from app import models
@@ -85,7 +102,12 @@ def create_app(test_config=None):
 
     @app.errorhandler(Exception)
     def handle_error(error):
-        app.logger.error(f"Unhandled error: {error}")
+        app.logger.exception(
+            "unhandled_error method=%s path=%s",
+            request.method,
+            request.path,
+        )
         return jsonify({"error": "Internal server error"}), 500
+
 
     return app
