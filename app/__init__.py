@@ -5,7 +5,7 @@ from pathlib import Path
 
 from flask import Flask, g, jsonify, request
 
-from app.extensions import db, migrate
+from app.extensions import db, limiter, migrate
 from app.config import config
 
 
@@ -20,6 +20,7 @@ def create_app(test_config=None):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    limiter.init_app(app)
 
     @app.before_request
     def log_request():

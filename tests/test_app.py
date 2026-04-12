@@ -1,10 +1,12 @@
 import pytest
 
+
 from app import create_app
 from app.routes.auth import login
 from app.routes.sessions import Session
-from app.extensions import db
+from app.extensions import db ,limiter
 from app.models import Trainer, User
+
 
 
 @pytest.fixture

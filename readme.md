@@ -27,3 +27,9 @@ DATABASE_URL=postgresql://user:password@db:5432/trainer_app
 DB_USER=user
 DB_PASSWORD=password
 DB_NAME=trainer_app
+
+Security hardening still in progress:
+
+- add CSRF protection for session-authenticated state-changing requests
+- remove development-only seeded users from production
+- add stronger login abuse protection

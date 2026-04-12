@@ -1,12 +1,13 @@
 from flask import Blueprint, jsonify, request, session
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import User
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
 @bp.post("/login")
+@limiter.limit("5 per minute")
 def login():
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
